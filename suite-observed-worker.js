@@ -46,7 +46,7 @@ async function init(canvas,main){
   await lab.init();lab.paused=true;lab.sampleEvery=Number.MAX_SAFE_INTEGER;
   if(!lab.fusedAvailable)throw Error('Fused kernel unavailable: audited default suite cannot proceed');
   await lab.device.queue.onSubmittedWorkDone();ready=true;
-  send({type:'ready',environment:{main,worker:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency},gpu:{adapterInfo:lab.adapter.info,format:lab.format,timestampSamplingEnabled:false,fusedAvailable:lab.fusedAvailable,limits:{maxBufferSize:lab.device.limits.maxBufferSize}},workerOffscreenCanvas:true}});
+  send({type:'ready',environment:{main,worker:{userAgent:navigator.userAgent,hardwareConcurrency:navigator.hardwareConcurrency},gpu:{adapterInfo:{vendor:lab.adapter.info?.vendor??null,architecture:lab.adapter.info?.architecture??null,device:lab.adapter.info?.device??null},format:lab.format,timestampSamplingEnabled:false,fusedAvailable:lab.fusedAvailable,limits:{maxBufferSize:lab.device.limits.maxBufferSize}},workerOffscreenCanvas:true}});
 }
 async function execute(raw,index,total){
   const c=validate(raw),[width,height]=SIZES[c.size];
