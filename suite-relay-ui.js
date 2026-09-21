@@ -7,7 +7,7 @@ const fmt=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'—';
 const clone=obj=>JSON.parse(JSON.stringify(obj));
 function setError(msg){$('error').style.display='block';$('error').textContent=String(msg);$('status').textContent='Error';}
 function pageEnv(){return {pageUrl:location.origin+location.pathname,viewport:{innerWidth,innerHeight,devicePixelRatio},pageVisibilityAtBoot:document.visibilityState,host:'GitHub Pages or equivalent static host; browser identification is heuristic'};}
-function size(){const r=$('scene').getBoundingClientRect();return {width:Math.max(1,r.width),height:Math.max(1,Math.min(2,devicePixelRatio||1)),dpr:Math.max(1,Math.min(2,devicePixelRatio||1))};}
+function size(){const r=$('scene').getBoundingClientRect();return {width:Math.max(1,r.width),height:Math.max(1,r.height),dpr:Math.max(1,Math.min(2,devicePixelRatio||1))};}
 function send(type,fields={}){if(worker)worker.postMessage({type,...fields});else if(runner){if(type==='start')runner.start(fields.plan).catch(e=>setError(e.stack||e));else if(type==='stop')runner.stop();else if(type==='resize')runner.resize(fields.size);else if(type==='visibility')runner.visibility(fields.hidden);}}
 function renderReport(report){if(!report)return;results=report;$('export').disabled=false;
  const rows=report.runs||[];$('runs').replaceChildren();
