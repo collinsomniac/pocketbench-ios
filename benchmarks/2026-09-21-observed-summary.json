@@ -1,0 +1,17 @@
+{
+  "schemaVersion": "1.0",
+  "evidenceLabel": "PHONE_MEASURED_SINGLE_SEQUENTIAL_SUITE",
+  "date": "2026-09-21",
+  "sourceUploadFilename": "pocketbench-observed-2026-09-21T09-04-12-363Z.json",
+  "sourceNote": "Aggregates transcribed from a user-provided report in the project conversation; the raw personal browser report is not published to this repository.",
+  "applicationVersion": "PocketBench observed throughput audit 2.0.0",
+  "environment": {"browserReported": "Safari Version/27.0 on iPhone", "gpuAdapterVendor": "apple", "fallbackAdapter": false, "worker": true, "deviceMaxBufferSizeBytes": 268435456},
+  "methodology": {"kernel": "fused dual-attractor", "scheduler": "uncapped GPU-queue-completed bounded batches", "warmupMsApprox": 1600, "measuredMsApprox": 2500, "runsPerCase": 1, "observation": "Two fixed 16x4 pixel patches copied into independent buffer slots after every offscreen render pass; mapped after timing", "limitations": ["Not full-frame uniqueness", "Not physical display FPS", "Not GPU clocks or thermal sustainability", "Not GPU particle-state numerical equivalence", "No randomized repeats"]},
+  "runs": [
+    {"name":"small-observed","particleCount":65536,"steps":2,"mode":"offscreen","width":768,"height":390,"batch":16,"completedIterations":3008,"elapsedMs":2508,"completedIterationsPerSecond":1199.3620414673046,"observed":{"capturedFrames":3008,"uniqueSampleHashes":946,"changedAdjacentSamples":1028,"framesWithNonBackground":861,"totalCopiedBytes":6160384}},
+    {"name":"large-unobserved-control","particleCount":65536,"steps":2,"mode":"offscreen","width":880,"height":1738,"batch":16,"completedIterations":2496,"elapsedMs":2510,"completedIterationsPerSecond":994.4223107569721,"observed":null},
+    {"name":"large-observed","particleCount":65536,"steps":2,"mode":"offscreen","width":880,"height":1738,"batch":16,"completedIterations":2512,"elapsedMs":2512,"completedIterationsPerSecond":1000,"observed":{"capturedFrames":2512,"uniqueSampleHashes":606,"changedAdjacentSamples":683,"framesWithNonBackground":552,"totalCopiedBytes":5144576}},
+    {"name":"large-observed-batch64","particleCount":65536,"steps":2,"mode":"offscreen","width":880,"height":1738,"batch":64,"completedIterations":2624,"elapsedMs":2535,"completedIterationsPerSecond":1035.1084812623274,"observed":{"capturedFrames":2624,"uniqueSampleHashes":625,"changedAdjacentSamples":707,"framesWithNonBackground":568,"totalCopiedBytes":5373952}},
+    {"name":"compute-heavy-control","particleCount":262144,"steps":8,"mode":"compute","width":880,"height":1738,"batch":16,"completedIterations":5536,"elapsedMs":2503,"completedIterationsPerSecond":2211.745904914103,"completedMillionParticleUpdatesPerSecond":4638.367347982421,"observed":null}
+  ]
+}
