@@ -7,7 +7,7 @@ const fmt=(x,n=2)=>Number.isFinite(x)?x.toFixed(n):'—';
 const clone=obj=>JSON.parse(JSON.stringify(obj));
 function setError(msg){$('error').style.display='block';$('error').textContent=String(msg);$('status').textContent='Error';}
 function pageEnv(){return {pageUrl:location.origin+location.pathname,viewport:{innerWidth,innerHeight,devicePixelRatio},pageVisibilityAtBoot:document.visibilityState,host:'GitHub Pages or equivalent static host; browser identification is heuristic'};}
-function size(){const r=$('scene').getBoundingClientRect();return {width:Math.max(1,r.width),height:Math.max(1,r.height),dpr:Math.max(1,Math.min(2,devicePixelRatio||1))};}
+function size(){const r=$('scene').getBoundingClientRect();return {width:Math.max(1,r.width),height:Math.max(1,Math.min(2,devicePixelRatio||1)),dpr:Math.max(1,Math.min(2,devicePixelRatio||1))};}
 function send(type,fields={}){if(worker)worker.postMessage({type,...fields});else if(runner){if(type==='start')runner.start(fields.plan).catch(e=>setError(e.stack||e));else if(type==='stop')runner.stop();else if(type==='resize')runner.resize(fields.size);else if(type==='visibility')runner.visibility(fields.hidden);}}
 function renderReport(report){if(!report)return;results=report;$('export').disabled=false;
  const rows=report.runs||[];$('runs').replaceChildren();
@@ -57,7 +57,7 @@ function startSuite(){if(!ready||running)return;let candidate;try{candidate=read
 function openExport(){if(!results)return;$('exportSummary').textContent=`${results.runs.length} runs · ${results.status} · includes raw samples, configuration and capabilities. Nothing is uploaded automatically.`;if(!$('exportDialog').open)$('exportDialog').showModal();}
 function reportBlob(){return new Blob([JSON.stringify(results,null,2)],{type:'application/json'});}
 function filename(ext='json'){return `pocketbench-relay-suite-${new Date().toISOString().replace(/[:.]/g,'-')}.${ext}`;}
-function download(blob,name){const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),15000);}
+function download(blob,name){const href=URL.createObjectURL(blob),a=document.createElement('a');a.href=href;a.download=name;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(href),15000);}
 function csvEscape(s){const v=String(s??'');return /[",\n]/.test(v)?'"'+v.replaceAll('"','""')+'"':v;}
 function csvData(){const columns=['runId','status','name','kernel','count','steps','render','scale','width','height','gpuComputeMedianMs','gpuComputeP90Ms','gpuRenderMedianMs','frameFps','frameP95Ms','actualMUpdatesPerSecond','gpuEquivalentMUpdatesPerSecond','gpuSamples','relayPulses','relayWaitP95Ms','error'];return [columns.join(','),...results.runs.map(r=>[r.runId,r.status,r.config.name,r.config.kernel,r.config.count,r.config.steps,r.config.render,r.config.scale,r.canvas?.width,r.canvas?.height,r.metrics?.gpuComputeMs?.median,r.metrics?.gpuComputeMs?.p90,r.metrics?.gpuRenderMs?.median,r.metrics?.submittedFramesPerSecond,r.metrics?.frameIntervalMs?.p95,r.metrics?.actualMillionParticleUpdatesPerSecond,r.metrics?.gpuEquivalentMillionParticleUpdatesPerSecond,r.metrics?.gpuComputeMs?.n,r.metrics?.scheduler?.delivered,r.metrics?.scheduler?.requestToReceiptMs?.p95,r.error].map(csvEscape).join(','))].join('\n');}
 $('start').addEventListener('click',startSuite);
