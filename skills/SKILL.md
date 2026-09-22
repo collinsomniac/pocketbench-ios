@@ -9,7 +9,8 @@ description: Empirical optimization of client-side WebGPU, WebGL, Wasm and in-br
 Maximize correct, useful completed work on the **actual** client. Distinguish simulation steps/s; GPU-queue-completed iterations/s; observed offscreen images/s; JavaScript draw submissions/s; actual presented frames/s; LLM prefill, decode tokens/s and first-token latency. Never reinterpret offscreen throughput as screen FPS or cap compute at 60/120 Hz without a user request. Browser-local GPU-resident operations and offscreen passes are first-class architecture options, not inherently wasted work.
 
 ## Start here
-- Live app: [`../website/`](../website/). Current curated routes: `gpu.html`, `throughput.html`, `ai.html`, `gguf.html`.
+- Live app: [`../website/`](../website/). Curated routes: `gpu.html`, `throughput.html`, `ai.html`, `gguf.html`, and **`chat.html`** for full editable inference JSON and three-model conversations.
+- Chat UX, model-memory estimates and cross-runtime comparisons: [`CHAT_LAB.md`](CHAT_LAB.md).
 - Recorded benchmark figures and provenance: [`EVIDENCE.md`](EVIDENCE.md); raw observed summary: [`observed-summary.json`](observed-summary.json).
 - GPU patterns and workload taxonomy: [`GPU_FIELD_GUIDE.md`](GPU_FIELD_GUIDE.md).
 - Mobile inference backends, memory and quality: [`AI_FIELD_GUIDE.md`](AI_FIELD_GUIDE.md) and [`INFERENCE_STACK.md`](INFERENCE_STACK.md).
@@ -18,12 +19,12 @@ Maximize correct, useful completed work on the **actual** client. Distinguish si
 
 ## Repeatable performance procedure
 1. Define the output contract (state, offscreen texture, CPU-readable values, visible frame, or generated tokens) and correctness tolerance. Record exact device, browser context, dimensions, power, model IDs, quantization and versions.
-2. Establish a measured working control, preferably equivalent JS/Wasm/WebGL/WebGPU paths; feature detection alone does not prove inference compatibility.
+2. Establish a measured working control, preferably equivalent JS/Wasm/WebGL/WebGPU paths; feature detection alone does not prove inference compatibility. **Qwen3 0.6B q4f16_1 in WebLLM 0.2.85 worker now has a successful 64-token user-exported run: 48.72 model-reported decode tokens/s, first text 137 ms, total 1,447 ms.** Earlier first-inference failures remain historically true; the 1.7B and 8B candidates are untested on this phone.
 3. Warm up, alternate comparable configurations, save individual raw results, measure GPU queue completion and end-to-end elapsed time. Separate transfer, shader/dispatch, allocation, cache, render and presentation costs.
 4. Check state or output really changes. Report observation scope; two sampled patches do not prove every complete image is unique.
 5. Change one variable, verify correct results, report regressions and memory/thermal limitations. Prefer removing redundant copies and keeping reusable intermediates resident.
-6. For LLMs, distinguish model download and cache, initialization, prefill, first text, sustained decode, tokens counted by model (never stream chunks), output quality, and failure stage. Never auto-retry a configuration that reloads an iPhone tab.
-7. When diagnosing a failed website, first validate static ESM import graph, every relative asset URL, DOM element IDs, and button handler installation **before** attempting another large model download. Treat a completed download as distinct from model initialization.
+6. For LLMs, distinguish model download and cache, initialization, prefill, first text, sustained decode, tokens counted by model (never stream chunks), output quality, and failure stage. Never auto-retry a configuration that reloads an iPhone tab. Use `chat.html` Request JSON tab for exact prompt/messages/max_tokens/temperature/top_p/stream/extra_body, Results for raw completions and Export for a reproducible report. Keep an equal request across model comparisons and explicitly test thinking on/off for Qwen.
+7. When diagnosing a failed website, first validate static ESM import graph, every relative asset URL, DOM element IDs, and button handler installation **before** attempting another large model download. Treat a completed download as distinct from model initialization. Model switching must not allow an abandoned promise to overwrite or unload a later worker.
 
 ## Dependency hygiene and deployment
 Maintain only `website/` (all slugs and runtime assets) and `skills/` (guides, evidence, skills). Root `index.html` is a minimal redirect required by existing branch-root GitHub Pages; root `README.md` is repository metadata. Keep slugs stable and avoid numbered repair pages. A source file moved into a subdirectory must have all relative URL and worker-import paths checked. Avoid import maps that redirect a specifier to a module which re-exports that identical specifier (self-reference). Update the single active page instead of creating an additional variant. Archive before destructive restructuring.
