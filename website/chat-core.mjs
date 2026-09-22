@@ -1,9 +1,10 @@
 /* Browser-local chat request validation and performance accounting. */
-export const VERSION='0.2.0';
+export const VERSION='0.2.1';
 export const RUNTIME_VERSION='0.2.85';
 export const RUNTIME_URL=`https://esm.run/@mlc-ai/web-llm@${RUNTIME_VERSION}`;
 export const MODELS=Object.freeze([
   {id:'Qwen3-0.6B-q4f16_1-MLC',label:'Qwen3 0.6B · measured control',parametersB:0.6,estimateMB:1403.34,tier:'measured'},
+  {id:'Llama-3.2-1B-Instruct-q4f16_1-MLC',label:'Llama 3.2 1B · diagnostic passed',parametersB:1,estimateMB:879.04,tier:'measured'},
   {id:'Qwen3-1.7B-q4f16_1-MLC',label:'Qwen3 1.7B · experimental',parametersB:1.7,estimateMB:2036.66,tier:'catalog'},
   {id:'Qwen3-8B-q4f16_1-MLC',label:'Qwen3 8B · high-memory stretch',parametersB:8,estimateMB:5695.78,tier:'stretch'}
 ]);
