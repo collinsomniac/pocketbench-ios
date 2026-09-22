@@ -1,8 +1,11 @@
 /** Pure browser-inference protocol, no browser globals at import time. */
-export const APP_VERSION='1.0.0';
-export const WLLAMA_VERSION='3.7.0';
+export const APP_VERSION='1.1.0';
+export const WLLAMA_VERSION='3.6.1';
 export const RUNTIME_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama@${WLLAMA_VERSION}/esm/index.js`;
 export const WASM_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama@${WLLAMA_VERSION}/src/wasm/wllama.wasm`;
+export const COMPAT_VERSION=WLLAMA_VERSION;
+export const COMPAT_WASM_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama-compat@${COMPAT_VERSION}/wasm/wllama.wasm`;
+export const COMPAT_WORKER_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama-compat@${COMPAT_VERSION}/wasm/wllama.js`;
 export const STORAGE_KEY='pocketbench-wllama-last-v1';
 export const MODELS=Object.freeze({
   smol:{label:'SmolLM2 135M · Q4_K_M · approx. 105 MB',url:'https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf',approxDownloadMB:105},
@@ -28,3 +31,19 @@ export function resultMetrics({start,firstText,end,usage,output,chunks,mode}){
 }
 export function incomplete(previous){return !!previous&&['importing','loading','inference','unloading'].includes(previous.phase)&&!previous.finishedAt;}
 export function saveCheckpoint(storage,report){storage.setItem(STORAGE_KEY,JSON.stringify(report));}
+
+/** HEAD checks never fetch model weights. A failed HEAD is diagnostic, not proof a GET would fail. */
+export async function headProbe(url, fetcher=fetch) {
+ const start=Date.now();
+ try {
+  const res=await fetcher(url,{method:'HEAD',mode:'cors',cache:'no-store',redirect:'follow'});
+  return {url,reachable:res.ok,status:res.status,contentType:res.headers?.get?.('content-type')??null,contentLength:res.headers?.get?.('content-length')??null,elapsedMs:Date.now()-start};
+ } catch(e) { return {url,reachable:null,headError:String(e?.message??e),elapsedMs:Date.now()-start,note:'HEAD/CORS/network failure; GET availability not established'}; }
+}
+export function classOfImportError(error) {
+ const text=String(error?.message??error);
+ if(/404|not found|failed to fetch dynamically imported module|importing a module script failed/i.test(text))return 'module-fetch-or-version';
+ if(/resolve module specifier|bare specifier|not a valid URL/i.test(text))return 'module-dependency-resolution';
+ if(/CORS|cross.origin|MIME|content.type/i.test(text))return 'module-cors-or-mime';
+ return 'module-import-other';
+}
