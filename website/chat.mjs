@@ -1,4 +1,4 @@
-import { VERSION, RUNTIME_VERSION, RUNTIME_URL, MODELS, defaultRequest, normalizeRequest, appendUser, addAssistant, usageMetrics, asJSON } from './chat-core.mjs?v=0.2.0';
+import { VERSION, RUNTIME_VERSION, RUNTIME_URL, MODELS, defaultRequest, normalizeRequest, appendUser, addAssistant, usageMetrics, asJSON } from './chat-core.mjs?v=0.2.1';
 const $ = id => document.getElementById(id);
 const now = () => performance.now();
 const iso = () => new Date().toISOString();
@@ -55,7 +55,7 @@ function modelDetails(){const item=MODELS.find(x=>x.id===$('model').value);if(!i
  $('modelInfo').textContent=`${item.label}; WebLLM catalog runtime memory estimate ${Math.round(item.estimateMB)} MB. This is not available browser memory. Context ${$('context').value} tokens.`;
  if(loaded&&(loaded.model!==item.id||loaded.context!==$('context').value))note('Model or context changed. Press Load before generating.');
  request.model=item.id;editor();controls();}
-$('model').onchange=()=>{if($('model').value!==MODELS[0].id&&$('context').value==='catalog')$('context').value='1024';modelDetails();};
+$('model').onchange=()=>{if(MODELS.find(m=>m.id===$('model').value)?.tier!=='measured'&&$('context').value==='catalog')$('context').value='1024';modelDetails();};
 $('context').onchange=modelDetails;
 $('load').onclick=async()=>{
  if(!library||busy)return;const id=$('model').value,ctx=$('context').value,m=MODELS.find(x=>x.id===id);if(!m)return;
@@ -131,7 +131,7 @@ function exportReport(){const full={app:'PocketBench Chat',version:VERSION,expor
 $('export').onclick=exportReport;
 $('copyRequest').onclick=()=>navigator.clipboard?.writeText($('request').value).catch(()=>note('Clipboard not available. Select JSON manually.'));
 $('copy').onclick=()=>navigator.clipboard?.writeText(last?.output??'').catch(()=>note('Clipboard not available. Select text manually.'));
-try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s?.version===VERSION){
+try{const s=JSON.parse(localStorage.getItem(STORE)||'null');if(s&&(s.version===VERSION||s.version==='0.2.0')){
   if(MODELS.some(m=>m.id===s.selectedModel))$('model').value=s.selectedModel;
   if(['catalog','512','1024','2048','4096'].includes(s.context))$('context').value=s.context;
   request=normalizeRequest(s.request??defaultRequest($('model').value),$('model').value);
@@ -144,5 +144,5 @@ editor();showChat();modelDetails();controls();
  library=await import(RUNTIME_URL);const catalog=library.prebuiltAppConfig?.model_list??[];
  for(const item of MODELS){const o=[...$('model').options].find(x=>x.value===item.id);const r=catalog.find(x=>x.model_id===item.id);
   if(!r||(r.required_features??[]).some(f=>!adapter.features.has(f))){o.disabled=true;o.textContent+=' · unavailable on this adapter';}}
- note(`WebLLM ${RUNTIME_VERSION} ready. Load the 0.6B control first.`);log('runtime-ready',{adapter:adapter.info?.vendor??'unknown'});controls();
+ note(`WebLLM ${RUNTIME_VERSION} ready. Llama 1B and Qwen 0.6B passed the separate diagnostic; choose one control.`);log('runtime-ready',{adapter:adapter.info?.vendor??'unknown'});controls();
  }catch(e){note('Runtime import failed: '+(e?.message??e));log('runtime-failed',{message:String(e)});}})();
