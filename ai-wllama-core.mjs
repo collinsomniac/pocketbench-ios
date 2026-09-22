@@ -1,5 +1,5 @@
 /** Pure browser-inference protocol, no browser globals at import time. */
-export const APP_VERSION='1.1.0';
+export const APP_VERSION='1.3.0';
 export const WLLAMA_VERSION='3.6.1';
 export const RUNTIME_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama@${WLLAMA_VERSION}/esm/index.js`;
 export const WASM_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama@${WLLAMA_VERSION}/src/wasm/wllama.wasm`;
@@ -7,9 +7,10 @@ export const COMPAT_VERSION=WLLAMA_VERSION;
 export const COMPAT_WASM_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama-compat@${COMPAT_VERSION}/wasm/wllama.wasm`;
 export const COMPAT_WORKER_URL=`https://cdn.jsdelivr.net/npm/@wllama/wllama-compat@${COMPAT_VERSION}/wasm/wllama.js`;
 export const STORAGE_KEY='pocketbench-wllama-last-v1';
+/** Exact filenames checked against live Hugging Face repository file trees on 2026-09-22. */
 export const MODELS=Object.freeze({
-  smol:{label:'SmolLM2 135M · Q4_K_M · approx. 105 MB',url:'https://huggingface.co/tensorblock/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct-Q4_K_M.gguf',approxDownloadMB:105},
-  qwen:{label:'Qwen3 0.6B · Q4_K_M · approx. 397 MB',url:'https://huggingface.co/Qwen/Qwen3-0.6B-GGUF/resolve/main/Qwen3-0.6B-Q4_K_M.gguf',approxDownloadMB:397},
+  smol:{label:'SmolLM2 135M · Q4_K_M · approx. 105 MB',url:'https://huggingface.co/QuantFactory/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct.Q4_K_M.gguf',approxDownloadMB:105},
+  qwen:{label:'Qwen3 0.6B · Q4_K_M · approx. 484 MB',url:'https://huggingface.co/gvij/qwen3-0.6b-gguf/resolve/main/qwen3-0.6b-q4_k_m.gguf',approxDownloadMB:484},
   local:{label:'Your GGUF file(s) from Files · no remote model download',url:null,approxDownloadMB:null}
 });
 export function validateChoice({model,offload,context,files=[]}){
@@ -31,8 +32,7 @@ export function resultMetrics({start,firstText,end,usage,output,chunks,mode}){
 }
 export function incomplete(previous){return !!previous&&['importing','loading','inference','unloading'].includes(previous.phase)&&!previous.finishedAt;}
 export function saveCheckpoint(storage,report){storage.setItem(STORAGE_KEY,JSON.stringify(report));}
-
-/** HEAD checks never fetch model weights. A failed HEAD is diagnostic, not proof a GET would fail. */
+/** HEAD checks never fetch model weights. Failed HEAD due to CORS is not proof GET fails. */
 export async function headProbe(url, fetcher=fetch) {
  const start=Date.now();
  try {
