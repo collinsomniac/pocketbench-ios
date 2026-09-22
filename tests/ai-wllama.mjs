@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import {validateChoice,MODELS,usageFields,resultMetrics,incomplete,WLLAMA_VERSION} from '../ai-wllama-core.mjs';
-assert.equal(WLLAMA_VERSION,'3.7.0');assert(MODELS.qwen.url.includes('Qwen3-0.6B-Q4_K_M.gguf'));
+assert.equal(WLLAMA_VERSION,'3.6.1');assert(MODELS.qwen.url.includes('Qwen3-0.6B-Q4_K_M.gguf'));
 assert.equal(validateChoice({model:'smol',offload:'0',context:'1024'}).offload,0);
 assert.equal(validateChoice({model:'qwen',offload:'4',context:'512'}).context,512);
 assert.throws(()=>validateChoice({model:'local',offload:0,context:1024}),/Choose/);
