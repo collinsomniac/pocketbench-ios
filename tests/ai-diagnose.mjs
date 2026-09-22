@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {CHECKPOINT_KEY,PROBES,interrupted,checkpoint,restored,usageOf,oneInference} from '../ai-diagnose-core.mjs';
+const store=new Map(),storage={setItem:(k,v)=>store.set(k,v),getItem:k=>store.get(k)};
+assert(interrupted({phase:'inference',stage:'probe-before-await',finishedAt:null}));
+assert(!interrupted({phase:'completed',finishedAt:'2026-09-21'}));
+assert(!interrupted({phase:'inference',finishedAt:'2026-09-21'}));
+checkpoint(storage,{phase:'inference',results:[{id:'one'}]});assert.deepEqual(restored(storage),{phase:'inference',results:[{id:'one'}]});
+assert.equal(CHECKPOINT_KEY,'pocketbench-ai-diagnostic-v1');assert.equal(PROBES.length,4);
+assert.equal(usageOf({completion_tokens:4,extra:{decode_tokens_per_s:30}}).reportedDecodeTokensPerSecond,30);
+let now=0;const events=[],calls=[];
+const engine={chat:{completions:{create:async req=>{calls.push(req);now+=5;
+if(!req.stream)return {choices:[{message:{content:'hello'}}],usage:{completion_tokens:1}};
+return (async function*(){now+=5;yield {choices:[{delta:{content:'alpha'}}]};now+=5;yield {usage:{completion_tokens:2,extra:{decode_tokens_per_s:50}}};})();
+}}}};
+const a=await oneInference(engine,PROBES[0],{clock:()=>now,mark:(...x)=>events.push(x)});assert.equal(a.usage.completionTokens,1);assert.equal(a.firstTextMs,5);assert.equal(calls[0].stream,false);
+const b=await oneInference(engine,PROBES[2],{clock:()=>now,mark:(...x)=>events.push(x)});assert.equal(b.usage.completionTokens,2);assert.equal(b.outputPreview,'alpha');assert.equal(calls[1].stream_options.include_usage,true);assert(events.some(x=>x[0]==='request-start'));assert(events.some(x=>x[0]==='first-text'));
+console.log('PASS: diagnostic restore, unclean termination, nonstream & stream token accounting');
