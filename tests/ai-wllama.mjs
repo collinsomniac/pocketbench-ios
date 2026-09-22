@@ -1,0 +1,14 @@
+import assert from 'node:assert/strict';
+import {validateChoice,MODELS,usageFields,resultMetrics,incomplete,WLLAMA_VERSION} from '../ai-wllama-core.mjs';
+assert.equal(WLLAMA_VERSION,'3.7.0');assert(MODELS.qwen.url.includes('Qwen3-0.6B-Q4_K_M.gguf'));
+assert.equal(validateChoice({model:'smol',offload:'0',context:'1024'}).offload,0);
+assert.equal(validateChoice({model:'qwen',offload:'4',context:'512'}).context,512);
+assert.throws(()=>validateChoice({model:'local',offload:0,context:1024}),/Choose/);
+assert.throws(()=>validateChoice({model:'smol',offload:16,context:1024}),/layers/);
+assert.equal(usageFields({completion_tokens:0}).completionTokens,0);
+const a=resultMetrics({start:100,firstText:200,end:1200,usage:{completion_tokens:50,prompt_tokens:15},output:'Hello',chunks:23,mode:'stream'});
+assert.equal(a.endToEndReportedTokensPerSecond,50*1000/1100);assert.equal(a.approximatePostFirstTextTokensPerSecond,49);
+assert.equal(resultMetrics({start:0,firstText:0,end:100,usage:null,output:'Hi',chunks:0,mode:'nonstream'}).endToEndReportedTokensPerSecond,null);
+assert.equal(incomplete({phase:'loading',finishedAt:null}),true);
+assert.equal(incomplete({phase:'completed',finishedAt:'x'}),false);
+console.log('PASS: 11 runtime-selection, metric, and crash-checkpoint checks');
