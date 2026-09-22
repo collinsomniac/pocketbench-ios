@@ -1,0 +1,17 @@
+import assert from 'node:assert/strict';
+import {STORAGE_KEY,PROBES,CONTEXTS,chatOptions,wasInterrupted,validateChoice,summarize,snapshot,recover} from '../ai-context-core.mjs';
+assert.equal(STORAGE_KEY,'pocketbench-ai-context-v2');
+assert.equal(PROBES.length,4);assert.deepEqual(CONTEXTS,[0,512,1024,2048]);
+assert.equal(chatOptions(0),undefined);assert.deepEqual(chatOptions(512),{context_window_size:512});assert.deepEqual(chatOptions(2048),{context_window_size:2048});
+assert.throws(()=>chatOptions(4096),/Unsupported/);
+const available=[{model_id:'small'},{model_id:'qwen'}];
+assert.deepEqual(validateChoice({model:'qwen',path:'worker',context:1024},available),{model:'qwen',path:'worker',context:1024});
+assert.throws(()=>validateChoice({model:'missing',path:'worker',context:0},available),/not present/);
+assert.throws(()=>validateChoice({model:'small',path:'cloud',context:0},available),/Invalid execution/);
+assert(wasInterrupted({phase:'inference',finishedAt:null}));assert(!wasInterrupted({phase:'completed',finishedAt:'ok'}));
+const storage=new Map(),adapter={setItem:(k,v)=>storage.set(k,v),getItem:k=>storage.get(k)};
+const report={phase:'inference',stage:'probe-before-await',results:[]};snapshot(adapter,report);assert.deepEqual(recover(adapter),report);
+const a=summarize({usage:{completionTokens:0},outputCharacters:4,wallMs:10,firstTextMs:9});assert.equal(a.tokenUsageDiscrepancy,true);assert.equal(a.tokensReported,0);
+const b=summarize({usage:{completionTokens:63,reportedDecodeTokensPerSecond:46.805},outputCharacters:200,wallMs:1486,firstTextMs:132});assert.equal(b.tokenUsageDiscrepancy,false);assert.equal(b.reportedDecodeTokensPerSecond,46.805);
+const c=summarize({usage:{completionTokens:null},outputCharacters:4});assert.equal(c.tokenUsageDiscrepancy,false);
+console.log('PASS: context overrides, configuration validation, interrupted checkpoint, and anomalous usage');
