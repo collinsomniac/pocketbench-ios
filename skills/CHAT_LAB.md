@@ -1,40 +1,36 @@
-# Browser-local chat lab · 2026-09-22
+# Browser-local Chat · controlled inference investigation (2026-09-22)
 
-## Evidence, not device claims
+## What has actually worked
 
-A user-exported PocketBench WebLLM 0.2.85 run on an iPhone reports successful dedicated-worker **Qwen3 0.6B q4f16_1** loading from browser cache and successful one-token and 64-token inference. The 64-token request took 1,447 ms, first text 137 ms, and reported 48.7239 decode tokens/s with 63 completion tokens. The one-token request returned `<think>` but reported zero completion tokens; do not infer throughput from that request. This is a single short test, not sustained throughput or a quality assessment. Earlier SmolLM2-135M tests also completed. The GGUF/wllama 3.6.1 path remains independent and not confirmed for successful inference on this phone.
+A user-exported iPhone WebLLM 0.2.85 diagnostic confirmed Qwen3 0.6B q4f16_1 inference in a dedicated WebGPU worker. Its 64-token streamed request completed in 1,447 ms, first visible text appeared at 137 ms, and the model reported 48.72 decode tokens/s (63 completion tokens). The one-token response visibly contained `<think>` despite zero reported completion tokens. The successful diagnostic used a **single user message**, `temperature: 0`, `max_tokens: 64`, `stream: true`, `stream_options: {include_usage: true}`, no system prompt, no `extra_body` and catalog-default context. A short successful response is not evidence of long-term stability or answer quality.
 
-The chat page uses the same working pinned WebLLM runtime, `@mlc-ai/web-llm@0.2.85`, and `website/ai-bench-worker.mjs`. It offers exactly three Qwen model configurations found in the **v0.2.85 prebuilt catalog**:
+The first Chat implementation used a different request: a system message, `temperature: 0.7`, `max_tokens: 128`, and `extra_body: {enable_thinking: false}`. The user reports that the iPhone tab reloaded on first inference with the intermediate 1.7B model after asking about poetry. This is a **real first-inference failure**, not a caught exception or proof that any single request field caused it. The 1.7B model has not yet completed a device-verified request; Qwen3 0.6B remains the measured control.
 
-| Candidate | Role | Catalog estimated GPU memory | Evidence |
-|---|---|---:|---|
-| Qwen3-0.6B-q4f16_1-MLC | Under 1B control | 1,403.34 MB | Inference succeeded on user's iPhone |
-| Qwen3-1.7B-q4f16_1-MLC | Intermediate | 2,036.66 MB | In WebLLM catalog; untested on this phone |
-| Qwen3-8B-q4f16_1-MLC | Large stretch candidate | 5,695.78 MB | In WebLLM catalog; **not** known to fit iOS Safari |
+## Model configurations (pinned WebLLM 0.2.85 catalog)
 
-These figures are WebLLM catalog estimates, not model download sizes, GPU memory availability, or native app limits. The 8B candidate is not the maximum parameter count theoretically possible on the phone or across all browser engines. A catalogue entry is not a guarantee of practical device support. Model selection and large downloads require a tap; the 8B candidate has an additional warning.
+| Model | Catalog-estimated runtime GPU memory | Status |
+|---|---:|---|
+| Qwen3-0.6B-q4f16_1-MLC | 1,403.34 MB | User-verified 64-token diagnostic, not yet verified in rebuilt Chat |
+| Qwen3-1.7B-q4f16_1-MLC | 2,036.66 MB | User reports a tab reload on first Chat request |
+| Qwen3-8B-q4f16_1-MLC | 5,695.78 MB | Catalog-listed only; may not fit Safari |
 
-Sources: https://github.com/mlc-ai/web-llm/blob/v0.2.85/src/config.ts ; https://github.com/mlc-ai/web-llm/blob/v0.2.85/examples/qwen3/src/qwen3_example.ts
+These are model catalog estimates, not browser memory readings. Native-app inference does not establish a browser-process budget or identical kernel compilation. The previous GGUF/wllama issue is independent; do not mix its results with MLC weights.
 
-## Interface and engine comparison
+## Chat build 0.2.0: one-variable-at-a-time protocol
 
-- **WebLLM + native HTML/JS (implemented):** no bundler, static GitHub Pages, OpenAI-like request object, worker WebGPU, stream and model-reported usage. Reuses the proven 0.6B runtime without shipping a larger UI framework. Actual phone performance still needs remeasurement in multi-turn chat.
-- **WebLLM Chat / NextChat:** real WebLLM-backed private browser chat with comprehensive UX, Next.js build and static export route; more frontend/deployment complexity than this targeted experiment. https://github.com/mlc-ai/web-llm-chat
-- **BrowserLLM:** WebLLM/WebGPU worker chat, conversation persistence, Markdown and per-turn statistics, but its Vite/React/Tailwind framework and broad model catalog are more moving parts. Borrow UX patterns, not its whole application. https://github.com/GautamVhavle/BrowserLLM
-- **wllama / llama.cpp:** independent GGUF-compatible Wasm CPU and WebGPU offload, appealing for quantization and cross-runtime comparisons; Safari-specific compatibility and earlier worker failures mean it should remain a separate experimental adapter until first inference is confirmed. https://github.com/ngxson/wllama/tree/3.6.1
-- **Open WebUI:** feature-rich server-centric UI, not a drop-in static client-only GitHub Pages stack. Its design patterns can inform chat history, parameter editing and controls without requiring its backend. https://github.com/open-webui/open-webui
-- **Transformers.js / LiteRT-LM Web:** candidate specialized and alternate-runtime paths; do not assert they outperform the measured WebLLM worker without same-device same-workload tests. Runtime availability and quantized weights differ.
+1. Load **0.6B / Catalog default**. Use **Run proven 64-token probe**. It sends the same JSON body and prompt as the successful `website/ai.html` diagnostic, via the same `ai-bench-worker.mjs` and pinned runtime. Export the result even if it reloads.
+2. On a successful probe, send `What do you like about poetry?` with default Chat JSON. Its default has no system message or thinking override, `temperature: 0`, `max_tokens: 64`, and `stream: true`. Output may be incomplete thinking; this proves decoding, not a useful answer.
+3. If that works, change **one** JSON field at a time: first `extra_body: {enable_thinking:false}` for a direct answer, then optionally raise `max_tokens` and introduce system/multi-turn history. Export each comparison. Do not assume thinking control is broken without evidence.
+4. Load **1.7B / 1,024 context** after exporting the 0.6B control; run the same probe and only then a chat turn. The context setting is WebLLM's documented `chatOpts.context_window_size` override at load, not a promise of lower total process memory. For a matched model-to-model test, set context identically on both models.
+5. Do not auto-attempt 8B after a reload. Retry no failing configuration repeatedly. If the tab resets, reopen the same Chat page and export its restored pending checkpoint before attempting another load.
 
-No external chat UI package is bundled. Text is rendered with `textContent` to avoid untrusted model output being interpreted as HTML. Exports include editable request JSON, generated text, raw completion chunks, model-reported usage and elapsed timings; chunks are **not tokens**. Session checkpoints use sessionStorage and exported JSON is the durable exchange format.
+`website/chat.html` retains Chat / Request JSON / Results tabs, editable OpenAI-compatible request fields, single model residency, one worker, interrupt and force-terminate controls, bounded raw chunk samples, local-only session checkpoints before awaited inference, and exportable per-turn metrics. Model weights download only after a user tap. `localStorage` persists the checkpoint and may contain prompts; exporting and clearing browser site data is the user's control over retention. The legacy 0.1.1 Chat session is deliberately not auto-restored into 0.2.0, to avoid silently replaying old generation settings.
 
-## Next discriminating experiments
+## Competing explanations and what differentiates them
 
-1. Confirm basic chat and request editing on iPhone with the already cached Qwen3 0.6B. Compare first-turn and second-turn TTFT, completion tokens, reported decode rate, input history length and output accuracy. Use a non-thinking request first; preserve a separate thinking-enabled request for cost comparison.
-2. Load Qwen3 1.7B in an otherwise identical dedicated-worker request, capture uncached/cached loading separately, prompt length, first text, decode, and memory/reload failures. Export **before** changing models.
-3. Only after stable smaller-model behavior, explicitly attempt 8B with a fresh Safari tab, adequate storage and no concurrently loaded engine. A tab reset is a failure observation, not an OOM diagnosis; do not automatically retry or silently substitute a smaller model.
-4. Cross-runtime comparison: load the **same GGUF** in wllama CPU and offload paths; compare only equivalent prompt, tokenization, context, quantization, temperature, and completed output. WebLLM MLC weights and GGUF are not byte-equivalent.
-5. Run repeated, randomized paired comparisons for 0.6B and 1.7B, include sustained 5–10-minute tests, foreground lifecycle, warm-versus-cold cache, quality checks and export complete raw evidence. Larger parameter counts are not automatically better size/speed tradeoffs.
+- **Request-shape regression:** 0.6B known-good probe works but 0.6B Chat fails when a single field is changed. Compare raw JSON exports; do not label that field causal until reproducible.
+- **Context/KV-cache or peak-memory pressure:** same 1.7B request fails with catalog context but succeeds at 1,024 or 512. A browser tab reset alone is not an OOM diagnosis; model-load completion is not inference completion.
+- **WebLLM GPU/runtime regression:** upstream issue [mlc-ai/web-llm#844](https://github.com/mlc-ai/web-llm/issues/844) reports a shape-cache disposal problem affecting Qwen3 1.7B prefill in WebLLM >=0.2.83 on a different GPU/backend. It is a diagnostic lead, not a demonstrated iPhone cause. Test a pinned runtime-version control only after the same-model/request/context experiments above.
+- **UI/worker lifecycle:** the 0.2.0 mocked end-to-end test exercises event handlers, model loads, probe, poetry chat, checkpoints, and 1.7B context override. Browser GPU execution, physical memory and Safari tab-lifecycle failure remain unvalidated.
 
-## JSON contract
-
-`website/chat.html` offers Chat, Request JSON and Results tabs. Edit a complete OpenAI-compatible chat completion body (`model`, `messages`, `temperature`, `top_p`, `max_tokens`, `stream`, `stream_options`, `extra_body`) and Apply JSON or Run JSON. The message composer appends one `user` message to the edited array. A model ID must match the loaded engine; unsupported role/content formats are rejected before dispatch. System and assistant history can be edited. Raw request and output are exported without converting characters or chunk counts into token estimates. No cloud inference endpoint exists.
+Upstream references: [WebLLM v0.2.85 model catalog](https://github.com/mlc-ai/web-llm/blob/v0.2.85/src/config.ts), [generation example](https://github.com/mlc-ai/web-llm/blob/v0.2.85/examples/qwen3/src/qwen3_example.ts), [API / context overrides](https://webllm.mlc.ai/docs/user/api_reference.html). Keep the two-folder repository structure and change the active `website/chat.html` in place.
