@@ -1,0 +1,9 @@
+# Active limitations (2026-09-22)
+
+- **GGUF first load unresolved.** The cache contains a 105,454,144-byte SmolLM2 Q4_K_M artifact, but wllama 3.6.1 aborted during worker/model initialization. A non-string abort payload broke upstream `.replace()` and left the load promise pending. The consolidated `website/gguf.html` corrects a separate 1.5 import-map self-reference and uses a guarded abort adapter. Its browser execution is NOT confirmed; do not claim inference works until the user exports a completed one-token run.
+- **Retired paths.** Earlier root-level numbered suite and AI debug HTML pages are intentionally removed from `main`; use `website/` slugs. They are retained in Git history and the `archive/pre-two-folder-cleanup-2026-09-22` branch. Some deep links inside historical field-guide prose are archival, not active.
+- **GitHub Pages:** Existing deployment used `main` branch root. Root `index.html` is therefore retained solely to redirect visitors to `website/`; do not remove it without changing Pages deployment source. GitHub Pages publication and iPhone device performance cannot be verified from source-only tests.
+- **Throughput:** `website/throughput.html` retains the original offscreen GPU-queue-completion test. Its old footer links to retired diagnostics may no longer resolve. This is a UI documentation issue; the benchmark JS and worker were not modified in this cleanup.
+- **WebLLM:** `website/ai.html` retains the previously successful 135M WebGPU control with separate model import/download and checkpoint handling. It still does not prove that Qwen3 0.6B can complete first inference.
+
+The backup branch is the source of truth for deleted experimental assets. Prefer repair-in-place of the curated slugs, one version per file, with a runtime import-graph and DOM-button integration test before deployment.
