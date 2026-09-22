@@ -1,20 +1,41 @@
-import {APP_VERSION,WLLAMA_VERSION,RUNTIME_URL,WASM_URL,STORAGE_KEY,MODELS,validateChoice,resultMetrics,incomplete,saveCheckpoint} from './ai-wllama-core.mjs';
+import {APP_VERSION,WLLAMA_VERSION,RUNTIME_URL,WASM_URL,COMPAT_WASM_URL,COMPAT_WORKER_URL,STORAGE_KEY,MODELS,validateChoice,resultMetrics,incomplete,saveCheckpoint,headProbe,classOfImportError} from './ai-wllama-core.mjs?v=1.1.0';
 const $=id=>document.getElementById(id),clock=()=>performance.now();let WllamaClass=null,engine=null,loaded=null,busy=false,report=null;
 const failText=e=>String(e?.stack||e?.message||e),time=()=>new Date().toISOString();
 function persist(){try{saveCheckpoint(localStorage,report);}catch(e){$('previous').textContent='Checkpoint unavailable: '+failText(e);}}
 function mark(stage,details={}){if(!report)return;report.stage=stage;report.events.push({at:time(),stage,...details});if(report.events.length>140)report.events.shift();persist();render();}
 function render(){if(!report)return;$('events').textContent=report.events.slice(-16).map(e=>`${e.at.slice(11,19)} ${e.stage}${e.error?': '+e.error:''}`).join('\n');}
 function status(s){$('status').textContent=s;}
-function controls(){const ready=!!engine&&!busy;$('load').disabled=busy;$('release').disabled=busy||!engine;$('one').disabled=!ready;$('sixtyfour').disabled=!ready;for(const id of ['model','offload','context','files'])$(id).disabled=busy;}
-function newReport(config){return {app:'PocketBench independent GGUF inference',version:APP_VERSION,runtime:{name:'wllama',version:WLLAMA_VERSION,module:RUNTIME_URL,wasm:WASM_URL},startedAt:time(),finishedAt:null,phase:'loading',stage:'load-start',config,environment:{userAgent:navigator.userAgent,webgpu:!!navigator.gpu,wasm:typeof WebAssembly!=='undefined',crossOriginIsolated:globalThis.crossOriginIsolated??null,hardwareConcurrency:navigator.hardwareConcurrency??null},events:[],load:null,results:[],errors:[],methodology:'Single-thread CPU Wasm n_gpu_layers=0; optional n_gpu_layers 4/999. GGUF not same bytes/quant as WebLLM artifacts. Token rates require runtime usage; cache/peak memory/physical NPU/thermal state not measured. No automatic model download, retry or crash loop.'};}
+function showPreflight(s){$('preflight').textContent=s;}
+function controls(){const ready=!!engine&&!busy;$('load').disabled=busy;$('check').disabled=busy;$('release').disabled=busy||!engine;$('one').disabled=!ready;$('sixtyfour').disabled=!ready;for(const id of ['model','offload','context','files'])$(id).disabled=busy;}
+function newReport(config){return {app:'PocketBench independent GGUF inference',version:APP_VERSION,runtime:{name:'wllama',version:WLLAMA_VERSION,module:RUNTIME_URL,wasm:WASM_URL,compatWasm:COMPAT_WASM_URL,compatWorker:COMPAT_WORKER_URL},startedAt:time(),finishedAt:null,phase:'loading',stage:'load-start',config,environment:{userAgent:navigator.userAgent,webgpu:!!navigator.gpu,wasm:typeof WebAssembly!=='undefined',crossOriginIsolated:globalThis.crossOriginIsolated??null,hardwareConcurrency:navigator.hardwareConcurrency??null},events:[],load:null,results:[],errors:[],methodology:'Single-thread CPU Wasm n_gpu_layers=0; optional n_gpu_layers 4/999. GGUF not same bytes/quant as WebLLM artifacts. Token rates require runtime usage; cache/peak memory/physical NPU/thermal state not measured. No automatic model download, retry or crash loop.'};}
 async function unload(){if(!engine)return;const old=engine;engine=null;loaded=null;mark('engine-exit-before-await');try{await old.exit();mark('engine-exit-completed');}catch(e){mark('engine-exit-error',{error:failText(e)});}controls();}
+async function importRuntime(){
+ if(WllamaClass)return WllamaClass;
+ const mod=await import(RUNTIME_URL);
+ if(typeof mod.Wllama!=='function')throw Error('Runtime imported but Wllama constructor is missing');
+ WllamaClass=mod.Wllama;return WllamaClass;
+}
+async function preflight(){
+ if(busy)return;busy=true;controls();
+ report=newReport({preflightOnly:true});report.phase='preflight';mark('preflight-start',{version:WLLAMA_VERSION});
+ try{
+  const assets=[['module',RUNTIME_URL],['wasm',WASM_URL],['safari-compat-wasm',COMPAT_WASM_URL],['safari-compat-worker',COMPAT_WORKER_URL]];
+  const checks=[];
+  for(const [name,url] of assets){mark('asset-head-before-await',{name,url});const check={name,...await headProbe(url)};checks.push(check);mark('asset-head-completed',{name,status:check.status??null,reachable:check.reachable,error:check.headError??null});}
+  report.assetChecks=checks;showPreflight(checks.map(c=>`${c.name}: ${c.reachable===true?'HTTP '+c.status:c.reachable===false?'HTTP '+c.status:'HEAD unavailable'} ${c.contentType??''} ${c.headError??''}`).join('\n'));
+  mark('runtime-import-before-await',{url:RUNTIME_URL});await importRuntime();mark('runtime-import-completed');
+  report.phase='preflight-completed';report.finishedAt=time();mark('preflight-completed');status('Runtime import passed. Asset HEAD results are diagnostic; model has NOT downloaded.');
+ }catch(e){const msg=failText(e),category=classOfImportError(e);report.errors.push({stage:'preflight',category,error:msg});report.phase='preflight-failed';report.finishedAt=time();mark('preflight-failed',{category,error:msg});status(`Import preflight failed (${category}): ${msg}`);}
+ finally{busy=false;controls();}
+}
+$('check').onclick=preflight;
 $('load').onclick=async()=>{if(busy)return;let config;try{config=validateChoice({model:$('model').value,offload:$('offload').value,context:$('context').value,files:$('files').files});}catch(e){status(failText(e));return;}
 busy=true;controls();try{await unload();report=newReport(config);mark('load-start',{model:config.model,offload:config.offload,context:config.context});status('Importing independent wllama runtime…');
-mark('runtime-import-before-await');const mod=await import(RUNTIME_URL);WllamaClass=mod.Wllama;if(typeof WllamaClass!=='function')throw Error('Runtime did not export Wllama constructor');mark('runtime-import-completed');
-engine=new WllamaClass({default:WASM_URL});engine.setCompat('default');const opt={n_gpu_layers:config.offload,n_ctx:config.context,n_threads:1,progressCallback:({loaded,total})=>{if(total&&loaded)status(`Downloading or reading model: ${Math.round(100*loaded/total)}% (library progress)`);}};
+mark('runtime-import-before-await',{url:RUNTIME_URL});await importRuntime();mark('runtime-import-completed');
+engine=new WllamaClass({default:WASM_URL});engine.setCompat('default');mark('safari-compat-selected',{wasm:COMPAT_WASM_URL,worker:COMPAT_WORKER_URL});const opt={n_gpu_layers:config.offload,n_ctx:config.context,n_threads:1,progressCallback:({loaded,total})=>{if(total&&loaded)status(`Downloading or reading model: ${Math.round(100*loaded/total)}% (library progress)`);}};
 mark('model-load-before-await');const start=clock();if(config.model==='local')await engine.loadModel(Array.from($('files').files),opt);else await engine.loadModelFromUrl(MODELS[config.model].url,opt);const loadMs=clock()-start;
 loaded=config;report.load={wallMs:loadMs,cacheState:'unknown',estimatedDownloadMB:config.remoteDownloadEstimateMB};report.phase='ready';mark('model-ready',{wallMs:Math.round(loadMs)});status('Model ready. Run one-token inference first.');
-}catch(e){const msg=failText(e);if(report){report.errors.push({stage:report.stage,error:msg});report.phase='failed';report.finishedAt=time();mark('load-failed',{error:msg});}status('Model load failed: '+msg);if(engine)await unload();}finally{busy=false;controls();}};
+}catch(e){const msg=failText(e);if(report){report.errors.push({stage:report.stage,category:report.stage.startsWith('runtime-import')?classOfImportError(e):'model-load-or-wasm',error:msg});report.phase='failed';report.finishedAt=time();mark('load-failed',{error:msg});}status('Model load failed: '+msg);if(engine)await unload();}finally{busy=false;controls();}};
 async function infer(tokens,stream){if(busy||!engine||!loaded)return;busy=true;controls();report.phase='inference';report.finishedAt=null;mark('request-before-await',{tokens,stream});status(`Running ${tokens}-token ${stream?'streaming':'nonstreaming'} request…`);
 const start=clock();let firstText=null,output='',chunks=0,usage=null;const req={messages:[{role:'user',content:'Write a short list of common English nouns separated by spaces. Answer directly.'}],max_tokens:tokens,temperature:0,stream};
 try{if(stream){const iterator=await engine.createChatCompletion(req);mark('stream-created');for await(const chunk of iterator){chunks++;const text=chunk.choices?.[0]?.delta?.content??'';if(text){if(firstText===null){firstText=clock();mark('first-text',{elapsedMs:Math.round(firstText-start)});}output+=text;}if(chunk.usage)usage=chunk.usage;}}
