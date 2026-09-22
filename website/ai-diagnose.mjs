@@ -1,7 +1,7 @@
 import {CHECKPOINT_KEY,PROBES,checkpoint,restored,interrupted,oneInference} from './ai-diagnose-core.mjs';
 import {LIBRARY_URL,LIBRARY_VERSION} from './ai-bench-metrics.mjs';
 const $=x=>document.getElementById(x),clock=()=>performance.now();
-const candidates=['SmolLM2-135M-Instruct-q0f16-MLC','SmolLM2-360M-Instruct-q4f16_1-MLC','Qwen3-0.6B-q4f16_1-MLC'];
+const candidates=['SmolLM2-135M-Instruct-q0f16-MLC','SmolLM2-360M-Instruct-q4f16_1-MLC','Llama-3.2-1B-Instruct-q4f16_1-MLC','Qwen3-0.6B-q4f16_1-MLC'];
 let runtime=null,engine=null,worker=null,loaded=null,busy=false,report=null;
 function error(e){return String(e?.stack||e);}
 function persist(){try{checkpoint(localStorage,report);}catch(e){$('previous').textContent='Storage write failed: '+error(e)+'; crash recovery may not work.';}}
