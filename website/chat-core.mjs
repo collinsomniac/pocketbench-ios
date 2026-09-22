@@ -1,5 +1,5 @@
 /* PocketBench chat: pure, dependency-free request/measurement core. */
-export const VERSION='0.1.0';
+export const VERSION='0.1.1';
 export const RUNTIME_VERSION='0.2.85';
 export const RUNTIME_URL=`https://esm.run/@mlc-ai/web-llm@${RUNTIME_VERSION}`;
 export const MODELS=Object.freeze([
