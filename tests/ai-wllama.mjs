@@ -1,6 +1,9 @@
 import assert from 'node:assert/strict';
-import {validateChoice,MODELS,usageFields,resultMetrics,incomplete,WLLAMA_VERSION} from '../ai-wllama-core.mjs';
-assert.equal(WLLAMA_VERSION,'3.6.1');assert(MODELS.qwen.url.includes('Qwen3-0.6B-Q4_K_M.gguf'));
+import {validateChoice,MODELS,usageFields,resultMetrics,incomplete,WLLAMA_VERSION,headProbe} from '../ai-wllama-core.mjs';
+assert.equal(WLLAMA_VERSION,'3.6.1');
+assert.equal(MODELS.smol.url,'https://huggingface.co/QuantFactory/SmolLM2-135M-Instruct-GGUF/resolve/main/SmolLM2-135M-Instruct.Q4_K_M.gguf');
+assert.equal(MODELS.qwen.url,'https://huggingface.co/gvij/qwen3-0.6b-gguf/resolve/main/qwen3-0.6b-q4_k_m.gguf');
+assert.equal(MODELS.qwen.approxDownloadMB,484);
 assert.equal(validateChoice({model:'smol',offload:'0',context:'1024'}).offload,0);
 assert.equal(validateChoice({model:'qwen',offload:'4',context:'512'}).context,512);
 assert.throws(()=>validateChoice({model:'local',offload:0,context:1024}),/Choose/);
@@ -11,4 +14,6 @@ assert.equal(a.endToEndReportedTokensPerSecond,50*1000/1100);assert.equal(a.appr
 assert.equal(resultMetrics({start:0,firstText:0,end:100,usage:null,output:'Hi',chunks:0,mode:'nonstream'}).endToEndReportedTokensPerSecond,null);
 assert.equal(incomplete({phase:'loading',finishedAt:null}),true);
 assert.equal(incomplete({phase:'completed',finishedAt:'x'}),false);
-console.log('PASS: 11 runtime-selection, metric, and crash-checkpoint checks');
+const p=await headProbe(MODELS.smol.url,async(_url,opts)=>{assert.equal(opts.method,'HEAD');return {ok:false,status:404,headers:{get:()=>null}};});
+assert.equal(p.status,404);assert.equal(p.reachable,false);
+console.log('PASS: model catalog, runtime selection, metrics, crash checkpoints, and missing-model HEAD');
